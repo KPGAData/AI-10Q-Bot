@@ -3,19 +3,14 @@ import chainlit as cl
 from dotenv import load_dotenv
 from operator import itemgetter
 from langchain_huggingface import HuggingFaceEndpoint
-from langchain_community.document_loaders import TextLoader
 from langchain_community.document_loaders import PyMuPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import FAISS
 from langchain_community.vectorstores import Qdrant
-from langchain_openai import ChatOpenAI
 from langchain_huggingface import HuggingFaceEndpointEmbeddings
 from langchain_core.prompts import PromptTemplate
-from langchain.schema.output_parser import StrOutputParser
-from langchain.schema.runnable import RunnablePassthrough
 from langchain.schema.runnable.config import RunnableConfig
 from langchain.globals import set_debug
-from langchain_core.messages.ai import AIMessageChunk
 
 set_debug(False)
 
