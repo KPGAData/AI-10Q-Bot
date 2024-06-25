@@ -77,7 +77,7 @@ hf_embeddings = HuggingFaceEndpointEmbeddings(
 FAISS_VECTOR_STORE = "FAISS"
 QDRANT_VECTOR_STORE = "QDRANT"
 
-VECTOR_STORE = QDRANT_VECTOR_STORE
+VECTOR_STORE = FAISS_VECTOR_STORE
 
 hf_retriever = ""
 
