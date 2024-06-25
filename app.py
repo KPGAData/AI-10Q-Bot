@@ -7,12 +7,15 @@ from langchain_community.document_loaders import TextLoader
 from langchain_community.document_loaders import PyMuPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import FAISS
+from langchain_community.vectorstores import Qdrant
+from langchain_openai import ChatOpenAI
 from langchain_huggingface import HuggingFaceEndpointEmbeddings
 from langchain_core.prompts import PromptTemplate
 from langchain.schema.output_parser import StrOutputParser
 from langchain.schema.runnable import RunnablePassthrough
 from langchain.schema.runnable.config import RunnableConfig
 from langchain.globals import set_debug
+from langchain_core.messages.ai import AIMessageChunk
 
 set_debug(False)
 
@@ -56,33 +59,80 @@ hf_embeddings = HuggingFaceEndpointEmbeddings(
     task="feature-extraction",
     huggingfacehub_api_token=HF_TOKEN,
 )
-DATA_DIR = "./data"
-VECTOR_STORE_DIR = os.path.join(DATA_DIR, "vectorstore")
-VECTOR_STORE_PATH = os.path.join(VECTOR_STORE_DIR, "index.faiss")
 
-FAISS_MAX_FETCH_SIZE = 2
-FAISS_MAX_BATCH_SIZE = 32
-if os.path.exists(VECTOR_STORE_PATH):
-    vectorstore = FAISS.load_local(
-        VECTOR_STORE_DIR,
-        hf_embeddings, 
-        allow_dangerous_deserialization=True # this is necessary to load the vectorstore from disk as it's stored as a `.pkl` file.
-    )
+# Step 6: Create a custom retriever
+class CustomQdrantRetriever:
+    def __init__(self, vectorstore, top_k=5):
+        self.vectorstore = vectorstore
+        self.top_k = top_k
+    
+    def __call__(self, query):
+        embedded_query = self.vectorstore.embedding_function(query)
+        search_result = vectorstore.search(
+            # collection_name=collection_name,
+            query_vector=embedded_query,
+            limit=self.top_k
+        )
+        documents = [
+            {"page_content": hit.payload["text"], "metadata": hit.payload}
+            for hit in search_result
+        ]
+        return documents
+
+FAISS_VECTOR_STORE = "FAISS"
+QDRANT_VECTOR_STORE = "QDRANT"
+
+VECTOR_STORE = QDRANT_VECTOR_STORE
+
+hf_retriever = ""
+
+if VECTOR_STORE == FAISS_VECTOR_STORE:
+    DATA_DIR = "./data"
+    VECTOR_STORE_DIR = os.path.join(DATA_DIR, "vectorstore")
+    VECTOR_STORE_PATH = os.path.join(VECTOR_STORE_DIR, "index.faiss")
+
+    FAISS_MAX_FETCH_SIZE = 2
+    FAISS_MAX_BATCH_SIZE = 32
+    if os.path.exists(VECTOR_STORE_PATH):
+        vectorstore = FAISS.load_local(
+            VECTOR_STORE_DIR,
+            hf_embeddings, 
+            allow_dangerous_deserialization=True # this is necessary to load the vectorstore from disk as it's stored as a `.pkl` file.
+        )
+        hf_retriever = vectorstore.as_retriever(search_kwargs={"k": FAISS_MAX_FETCH_SIZE, "fetch_k": FAISS_MAX_FETCH_SIZE})
+        print("Loaded Vectorstore at " + VECTOR_STORE_DIR)
+    else:
+        print("Indexing Files")
+        os.makedirs(VECTOR_STORE_DIR, exist_ok=True)
+        ### 4. INDEX FILES
+        ### NOTE: REMEMBER TO BATCH THE DOCUMENTS WITH MAXIMUM BATCH SIZE = 32
+        for i in range(0, len(split_documents), FAISS_MAX_BATCH_SIZE):
+            if i==0:
+                vectorstore = FAISS.from_documents(split_documents[i:i+FAISS_MAX_BATCH_SIZE], hf_embeddings)
+                continue
+            vectorstore.add_documents(split_documents[i:i+FAISS_MAX_BATCH_SIZE])
+        vectorstore.save_local(VECTOR_STORE_DIR)
+
     hf_retriever = vectorstore.as_retriever(search_kwargs={"k": FAISS_MAX_FETCH_SIZE, "fetch_k": FAISS_MAX_FETCH_SIZE})
-    print("Loaded Vectorstore at " + VECTOR_STORE_DIR)
 else:
-    print("Indexing Files")
-    os.makedirs(VECTOR_STORE_DIR, exist_ok=True)
-    ### 4. INDEX FILES
-    ### NOTE: REMEMBER TO BATCH THE DOCUMENTS WITH MAXIMUM BATCH SIZE = 32
-    for i in range(0, len(split_documents), FAISS_MAX_BATCH_SIZE):
-        if i==0:
-            vectorstore = FAISS.from_documents(split_documents[i:i+FAISS_MAX_BATCH_SIZE], hf_embeddings)
-            continue
-        vectorstore.add_documents(split_documents[i:i+FAISS_MAX_BATCH_SIZE])
-    vectorstore.save_local(VECTOR_STORE_DIR)
+    QDRANT_MAX_FETCH_SIZE = 2
+    QDRANT_MAX_BATCH_SIZE = 32
 
-hf_retriever = vectorstore.as_retriever(search_kwargs={"k": FAISS_MAX_FETCH_SIZE, "fetch_k": FAISS_MAX_FETCH_SIZE})
+    vectorstore = ""
+    for i in range(0, len(split_documents), QDRANT_MAX_BATCH_SIZE):
+        if i==0:
+            vectorstore = Qdrant.from_documents(
+                split_documents[i:i+QDRANT_MAX_BATCH_SIZE], 
+                hf_embeddings, 
+                location=":memory:",
+                collection_name="10Q_ABNB"
+            )
+            continue
+        vectorstore.add_documents(split_documents[i:i+QDRANT_MAX_BATCH_SIZE])
+    
+    # hf_retriever = CustomQdrantRetriever(vectorstore=vectorstore, top_k=QDRANT_MAX_FETCH_SIZE)
+
+    hf_retriever = vectorstore.as_retriever(search_kwargs={"k": 2})
 
 # -- AUGMENTED -- #
 """
@@ -111,6 +161,7 @@ rag_prompt = PromptTemplate.from_template(RAG_PROMPT_TEMPLATE)
 """
 1. Create a HuggingFaceEndpoint for the LLM
 """
+
 ### 1. CREATE HUGGINGFACE ENDPOINT FOR LLM
 hf_llm = HuggingFaceEndpoint(
     endpoint_url=HF_LLM_ENDPOINT,

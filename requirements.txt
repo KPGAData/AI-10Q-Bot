@@ -7,3 +7,4 @@ langchain_text_splitters==0.2.1
 python-dotenv==1.0.1
 faiss-cpu
 pymupdf
+qdrant-client
