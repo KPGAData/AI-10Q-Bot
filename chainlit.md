@@ -1,3 +1,3 @@
-# Paul Graham Essays Bot
+# AirBnB 10K Chat
 
-### I am your personal assistant that can advise you on investing and silicon valley. I have built my knowledge from essays by Paul Graham. 
+### I am your personal assistant that can help answer questions about AirBnB 10K filing
