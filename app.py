@@ -160,7 +160,7 @@ rag_prompt = PromptTemplate.from_template(RAG_PROMPT_TEMPLATE)
 ### 1. CREATE HUGGINGFACE ENDPOINT FOR LLM
 hf_llm = HuggingFaceEndpoint(
     endpoint_url=HF_LLM_ENDPOINT,
-    max_new_tokens=512,
+    max_new_tokens=64,
     top_k=10,
     top_p=0.95,
     temperature=0.3,
