@@ -61,23 +61,23 @@ hf_embeddings = HuggingFaceEndpointEmbeddings(
 )
 
 # Step 6: Create a custom retriever
-class CustomQdrantRetriever:
-    def __init__(self, vectorstore, top_k=5):
-        self.vectorstore = vectorstore
-        self.top_k = top_k
+# class CustomQdrantRetriever:
+#     def __init__(self, vectorstore, top_k=5):
+#         self.vectorstore = vectorstore
+#         self.top_k = top_k
     
-    def __call__(self, query):
-        embedded_query = self.vectorstore.embedding_function(query)
-        search_result = vectorstore.search(
-            # collection_name=collection_name,
-            query_vector=embedded_query,
-            limit=self.top_k
-        )
-        documents = [
-            {"page_content": hit.payload["text"], "metadata": hit.payload}
-            for hit in search_result
-        ]
-        return documents
+#     def __call__(self, query):
+#         embedded_query = self.vectorstore.embedding_function(query)
+#         search_result = vectorstore.search(
+#             # collection_name=collection_name,
+#             query_vector=embedded_query,
+#             limit=self.top_k
+#         )
+#         documents = [
+#             {"page_content": hit.payload["text"], "metadata": hit.payload}
+#             for hit in search_result
+#         ]
+#         return documents
 
 FAISS_VECTOR_STORE = "FAISS"
 QDRANT_VECTOR_STORE = "QDRANT"
