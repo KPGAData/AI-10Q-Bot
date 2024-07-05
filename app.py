@@ -7,10 +7,14 @@ from langchain_community.document_loaders import PyMuPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import FAISS
 from langchain_community.vectorstores import Qdrant
+from langchain_openai import ChatOpenAI
+from langchain_openai.embeddings import OpenAIEmbeddings
 from langchain_huggingface import HuggingFaceEndpointEmbeddings
 from langchain_core.prompts import PromptTemplate
+from langchain_core.messages.ai import AIMessageChunk
 from langchain.schema.runnable.config import RunnableConfig
 from langchain.globals import set_debug
+from llama_parse import LlamaParse
 
 set_debug(False)
 
@@ -30,54 +34,38 @@ HF_LLM_ENDPOINT = os.environ["HF_LLM_ENDPOINT"]
 HF_EMBED_ENDPOINT = os.environ["HF_EMBED_ENDPOINT"]
 HF_TOKEN = os.environ["HF_TOKEN"]
 
-# ---- GLOBAL DECLARATIONS ---- #
-
-# -- RETRIEVAL -- #
-"""
-1. Load Documents from Text File
-2. Split Documents into Chunks
-3. Load HuggingFace Embeddings (remember to use the URL we set above)
-4. Index Files if they do not exist, otherwise load the vectorstore
-"""
 ### 1. CREATE TEXT LOADER AND LOAD DOCUMENTS
 ### NOTE: PAY ATTENTION TO THE PATH THEY ARE IN. 
-pdf_loader = PyMuPDFLoader("./data/10Q-AirBnB.pdf")
-documents = pdf_loader.load()
+parser = LlamaParse(result_type='markdown', verbose=True, language='en')
+
+pdf_documents = parser.load_data('./data/10Q-AirBnB.pdf')
+
+class DataObj:
+    def __init__(self, data):
+       for key, value in data.items():
+           setattr(self, key, value)
+
+# LlamaParse produces documents that don't have `page_content` attribute expected by Recursive Splitter`
+document_dicts = [{"page_content": d.text, "metadata": {}} for d in pdf_documents]
+documents = [DataObj(d) for d in document_dicts]
+# print(documents[0].page_content)
 
 ### 2. CREATE TEXT SPLITTER AND SPLIT DOCUMENTS
-text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=25)
+text_splitter = RecursiveCharacterTextSplitter(chunk_size=512, chunk_overlap=50)
 split_documents = text_splitter.split_documents(documents)
 
 ### 3. LOAD HUGGINGFACE EMBEDDINGS
-hf_embeddings = HuggingFaceEndpointEmbeddings(
-    model=HF_EMBED_ENDPOINT,
-    task="feature-extraction",
-    huggingfacehub_api_token=HF_TOKEN,
-)
-
-# Step 6: Create a custom retriever
-# class CustomQdrantRetriever:
-#     def __init__(self, vectorstore, top_k=5):
-#         self.vectorstore = vectorstore
-#         self.top_k = top_k
-    
-#     def __call__(self, query):
-#         embedded_query = self.vectorstore.embedding_function(query)
-#         search_result = vectorstore.search(
-#             # collection_name=collection_name,
-#             query_vector=embedded_query,
-#             limit=self.top_k
-#         )
-#         documents = [
-#             {"page_content": hit.payload["text"], "metadata": hit.payload}
-#             for hit in search_result
-#         ]
-#         return documents
+# hf_embeddings = HuggingFaceEndpointEmbeddings(
+#     model=HF_EMBED_ENDPOINT,
+#     task="feature-extraction",
+#     huggingfacehub_api_token=HF_TOKEN,
+# )
+hf_embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
 
 FAISS_VECTOR_STORE = "FAISS"
 QDRANT_VECTOR_STORE = "QDRANT"
 
-VECTOR_STORE = FAISS_VECTOR_STORE
+VECTOR_STORE = QDRANT_VECTOR_STORE
 
 hf_retriever = ""
 
@@ -86,7 +74,7 @@ if VECTOR_STORE == FAISS_VECTOR_STORE:
     VECTOR_STORE_DIR = os.path.join(DATA_DIR, "vectorstore")
     VECTOR_STORE_PATH = os.path.join(VECTOR_STORE_DIR, "index.faiss")
 
-    FAISS_MAX_FETCH_SIZE = 2
+    FAISS_MAX_FETCH_SIZE = 5
     FAISS_MAX_BATCH_SIZE = 32
     if os.path.exists(VECTOR_STORE_PATH):
         vectorstore = FAISS.load_local(
@@ -94,7 +82,6 @@ if VECTOR_STORE == FAISS_VECTOR_STORE:
             hf_embeddings, 
             allow_dangerous_deserialization=True # this is necessary to load the vectorstore from disk as it's stored as a `.pkl` file.
         )
-        hf_retriever = vectorstore.as_retriever(search_kwargs={"k": FAISS_MAX_FETCH_SIZE, "fetch_k": FAISS_MAX_FETCH_SIZE})
         print("Loaded Vectorstore at " + VECTOR_STORE_DIR)
     else:
         print("Indexing Files")
@@ -108,7 +95,8 @@ if VECTOR_STORE == FAISS_VECTOR_STORE:
             vectorstore.add_documents(split_documents[i:i+FAISS_MAX_BATCH_SIZE])
         vectorstore.save_local(VECTOR_STORE_DIR)
 
-    hf_retriever = vectorstore.as_retriever(search_kwargs={"k": FAISS_MAX_FETCH_SIZE, "fetch_k": FAISS_MAX_FETCH_SIZE})
+    # hf_retriever = vectorstore.as_retriever(search_kwargs={"k": FAISS_MAX_FETCH_SIZE, "fetch_k": FAISS_MAX_FETCH_SIZE})
+    hf_retriever = vectorstore.as_retriever()
 else:
     QDRANT_MAX_FETCH_SIZE = 2
     QDRANT_MAX_BATCH_SIZE = 32
@@ -127,7 +115,8 @@ else:
     
     # hf_retriever = CustomQdrantRetriever(vectorstore=vectorstore, top_k=QDRANT_MAX_FETCH_SIZE)
 
-    hf_retriever = vectorstore.as_retriever(search_kwargs={"k": 2})
+    # hf_retriever = vectorstore.as_retriever(search_kwargs={"k": 2})
+    hf_retriever = vectorstore.as_retriever()
 
 # -- AUGMENTED -- #
 """
@@ -158,15 +147,17 @@ rag_prompt = PromptTemplate.from_template(RAG_PROMPT_TEMPLATE)
 """
 
 ### 1. CREATE HUGGINGFACE ENDPOINT FOR LLM
-hf_llm = HuggingFaceEndpoint(
-    endpoint_url=HF_LLM_ENDPOINT,
-    max_new_tokens=64,
-    top_k=10,
-    top_p=0.95,
-    temperature=0.3,
-    repetition_penalty=1.15,
-    huggingfacehub_api_token=HF_TOKEN,
-)
+# hf_llm = HuggingFaceEndpoint(
+#     endpoint_url=HF_LLM_ENDPOINT,
+#     max_new_tokens=64,
+#     top_k=10,
+#     top_p=0.95,
+#     temperature=0.3,
+#     repetition_penalty=1.15,
+#     huggingfacehub_api_token=HF_TOKEN,
+# )
+
+hf_llm = ChatOpenAI(model="gpt-4o")
 
 @cl.author_rename
 def rename(original_author: str):
@@ -176,7 +167,7 @@ def rename(original_author: str):
     In this case, we're overriding the 'Assistant' author to be 'Paul Graham Essay Bot'.
     """
     rename_dict = {
-        "Assistant" : "Paul Graham Essays Bot"
+        "Assistant" : "AirBnB 10Q agent"
     }
     return rename_dict.get(original_author, original_author)
 
@@ -215,6 +206,9 @@ async def main(message: cl.Message):
         {"query": message.content},
         config=RunnableConfig(callbacks=[cl.LangchainCallbackHandler()]),
     ):
-        await msg.stream_token(chunk)
+        if (isinstance(chunk, AIMessageChunk)):
+            await msg.stream_token(chunk.content)
+        else:
+            await msg.stream_token(chunk)
 
     await msg.send()
