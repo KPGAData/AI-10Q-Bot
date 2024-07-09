@@ -14,3 +14,4 @@ tiktoken==0.7
 jsonpointer==2.4
 marshmallow==3.21.2
 idna==3.3
+sniffio==1.2.0
