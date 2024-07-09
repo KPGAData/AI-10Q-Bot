@@ -1,9 +1,9 @@
 chainlit==1.0.0
-langchain>=0.2
-langchain-community>=0.2
-langchain-core>=0.2
+langchain>=0.2.0
+langchain-community>=0.2.0
+langchain-core>=0.2.0
 langchain-huggingface==0.0.3
-langchain-text-splitters>=0.2
+langchain-text-splitters>=0.2.0
 langchain-openai==0.1.14
 llama-parse==0.4.6
 python-dotenv==1.0.1
