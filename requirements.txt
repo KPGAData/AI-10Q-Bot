@@ -78,7 +78,7 @@ h11==0.14.0
 h2==3.2.0
 hpack==3.0.0
 # httpcore==0.17.3
-httpx==0.24.1
+# httpx==0.24.1
 # httpx-sse==0.4.0
 huggingface-hub==0.23.4
 hyperframe==5.2.0
