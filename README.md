@@ -1,8 +1,8 @@
 ---
-title: AI 10Q Analyzer Bot
-emoji: 🚀
-colorFrom: red
-colorTo: yellow
+title: AB 10Q Bot
+emoji: 🔥
+colorFrom: blue
+colorTo: purple
 sdk: docker
 pinned: false
 ---
