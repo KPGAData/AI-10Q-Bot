@@ -39,7 +39,7 @@ cffi==1.15.0
 charset-normalizer==3.3.2
 chevron==0.14.0
 click==8.1.7
-cohere==4.37
+# cohere==4.37
 colorama==0.4.6
 comm==0.2.2
 constantly==15.1.0
@@ -106,6 +106,7 @@ jupyter_client==8.6.1
 jupyter_core==5.7.2
 jupyter_server==2.14.0
 jupyter_server_terminals==0.5.3
+#jupyterlab==4.0.13
 jupyterlab_pygments==0.3.0
 jupyterlab_server==2.27.1
 jupyterlab_widgets==3.0.10
@@ -192,7 +193,7 @@ QtPy==2.4.1
 queuelib==1.6.2
 referencing==0.35.0
 regex==2024.4.28
-requests==2.31.0
+# requests==2.31.0
 rfc3339-validator==0.1.4
 rfc3986-validator==0.1.1
 rpds-py==0.18.0
@@ -231,7 +232,7 @@ trio==0.19.0
 trio-websocket==0.9.2
 Twisted==21.7.0
 types-python-dateutil==2.9.0.20240316
-types-requests==2.31.0.20240406
+# types-requests==2.31.0.20240406
 typing-inspect==0.9.0
 typing_extensions==4.11.0
 tzdata==2024.1
