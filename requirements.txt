@@ -9,7 +9,7 @@ llama-parse==0.4.6
 python-dotenv==1.0.1
 faiss-cpu==1.8.0
 pymupdf==1.24.6
-qdrant-client==1.9.2
+qdrant-client>=1.10
 tiktoken==0.7
 aiofiles==23.2.1
 aiohttp==3.9.5
