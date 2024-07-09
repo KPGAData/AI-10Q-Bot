@@ -24,3 +24,4 @@ fsspec==2024.3.1
 frozenlist==1.4.1
 exceptiongroup==1.2.1
 distro==1.9.0
+Deprecated==1.2.14
