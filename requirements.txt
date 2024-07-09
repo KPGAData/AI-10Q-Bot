@@ -26,3 +26,4 @@ exceptiongroup==1.2.1
 distro==1.9.0
 Deprecated==1.2.14
 charset_normalizer==3.3.2
+attrs==23.2.0
