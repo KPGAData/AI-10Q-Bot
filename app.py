@@ -2,14 +2,11 @@ import os
 import chainlit as cl
 from dotenv import load_dotenv
 from operator import itemgetter
-from langchain_huggingface import HuggingFaceEndpoint
-from langchain_community.document_loaders import PyMuPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import FAISS
 from langchain_community.vectorstores import Qdrant
 from langchain_openai import ChatOpenAI
 from langchain_openai.embeddings import OpenAIEmbeddings
-from langchain_huggingface import HuggingFaceEndpointEmbeddings
 from langchain_core.prompts import PromptTemplate
 from langchain_core.messages.ai import AIMessageChunk
 from langchain.schema.runnable.config import RunnableConfig
@@ -40,6 +37,7 @@ parser = LlamaParse(result_type='markdown', verbose=True, language='en')
 
 pdf_documents = parser.load_data('./data/10Q-AirBnB.pdf')
 
+# This class is for converting a python dict into an python object
 class DataObj:
     def __init__(self, data):
        for key, value in data.items():
